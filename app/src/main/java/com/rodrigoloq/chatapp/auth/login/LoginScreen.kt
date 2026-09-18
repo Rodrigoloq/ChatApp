@@ -29,6 +29,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
@@ -160,7 +161,8 @@ fun LoginViewContent(state: LoginUIState,
 @Composable
 fun LoginView(modifier: Modifier = Modifier,
               navController: NavController,
-              viewModel: LoginViewModel = viewModel()){
+              viewModel: LoginViewModel = hiltViewModel()
+){
     val uiState by viewModel.uiState.collectAsState()
     LoginViewContent(state = uiState,
         modifier = modifier,

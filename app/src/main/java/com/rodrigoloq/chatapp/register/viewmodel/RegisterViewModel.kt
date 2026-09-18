@@ -6,15 +6,18 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rodrigoloq.chatapp.register.model.RegisterRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
-class RegisterViewModel : ViewModel() {
-    val registerRepository = RegisterRepository()
-
+@HiltViewModel
+class RegisterViewModel @Inject constructor(
+    private val registerRepository: RegisterRepository
+): ViewModel() {
     private val _uiState = MutableStateFlow(RegisterUIState())
     val uiState: StateFlow<RegisterUIState> = _uiState.asStateFlow()
 

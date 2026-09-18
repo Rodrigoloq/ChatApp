@@ -14,11 +14,18 @@ import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import com.rodrigoloq.chatapp.MainActivity
 import com.rodrigoloq.chatapp.R
+import dagger.hilt.android.AndroidEntryPoint
 import java.util.Random
+import javax.inject.Inject
 
-class MyFcmService : FirebaseMessagingService() {
+@AndroidEntryPoint
+class MyFcmService: FirebaseMessagingService() {
+    @Inject
+    lateinit var firebaseAuth: FirebaseAuth
 
-    private val firebaseAuth = FirebaseAuth.getInstance()
+    @Inject
+    lateinit var firebaseDatabase: FirebaseDatabase
+
     companion object{
         private const val NOTIFICATION_CHANNEL_ID = "CHAT_APP_CHANNEL_ID"
     }
@@ -30,7 +37,7 @@ class MyFcmService : FirebaseMessagingService() {
             val hashMap = HashMap<String, Any>()
             hashMap["fcmToken"] = token
 
-            val ref = FirebaseDatabase.getInstance().getReference("users")
+            val ref = firebaseDatabase.getReference("users")
             ref.child(myUid)
                 .updateChildren(hashMap)
                 .addOnCompleteListener {  }

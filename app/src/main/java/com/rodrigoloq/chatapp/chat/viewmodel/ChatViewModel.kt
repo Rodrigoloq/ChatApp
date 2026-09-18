@@ -11,14 +11,18 @@ import com.rodrigoloq.chatapp.chat.model.ChatRepository
 import com.rodrigoloq.chatapp.entities.Chat
 import com.rodrigoloq.chatapp.entities.User
 import com.rodrigoloq.chatapp.utis.Utils
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
-class ChatViewModel : ViewModel() {
-    private val chatRepository = ChatRepository()
+@HiltViewModel
+class ChatViewModel @Inject constructor(
+    private val chatRepository: ChatRepository
+): ViewModel() {
 
     private val _uiState = MutableStateFlow(ChatUIState())
     val uiState: StateFlow<ChatUIState> = _uiState.asStateFlow()

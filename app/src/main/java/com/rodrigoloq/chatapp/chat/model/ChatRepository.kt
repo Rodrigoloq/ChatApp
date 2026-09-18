@@ -13,12 +13,13 @@ import com.rodrigoloq.chatapp.entities.Chats
 import com.rodrigoloq.chatapp.entities.User
 import com.rodrigoloq.chatapp.utis.Utils
 import kotlinx.coroutines.tasks.await
+import javax.inject.Inject
 
-class ChatRepository {
-    private val firebaseAuth = FirebaseAuth.getInstance()
-    private val firebaseDatabase = FirebaseDatabase.getInstance()
-    private val firebaseStorage = FirebaseStorage.getInstance()
-
+class ChatRepository @Inject constructor(
+    private val firebaseAuth: FirebaseAuth,
+    private val firebaseDatabase: FirebaseDatabase,
+    private val firebaseStorage: FirebaseStorage
+) {
     fun loadUserInfo(uid: String, onLoad:(User?) -> Unit){
         val reference = firebaseDatabase.getReference("users")
         reference.child(uid).addValueEventListener(object : ValueEventListener{

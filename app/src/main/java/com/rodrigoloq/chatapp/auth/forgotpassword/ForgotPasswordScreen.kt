@@ -46,6 +46,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
@@ -114,17 +115,6 @@ fun ForgotPasswordViewContent(
             blankEmailError = true
             emailFocusRequester.requestFocus()
         } else {
-//            viewModel.sendInstructions(emailTextValue){success, errorMsg ->
-//                if(!success){
-//                    Toast.makeText(context,
-//                        "Fallo el envio de instrucciones debido a: $errorMsg",
-//                        Toast.LENGTH_SHORT).show()
-//                } else {
-//                    Toast.makeText(context,
-//                        "Se han enviado las instrucciones, revise su correo",
-//                        Toast.LENGTH_SHORT).show()
-//                }
-//            }
             sendInstructions(emailTextValue)
         }
     }
@@ -239,7 +229,7 @@ fun ForgotPasswordViewContent(
 fun ForgotPasswordView(
     modifier: Modifier = Modifier,
     navController: NavController,
-    viewModel: ForgotPasswordViewModel = viewModel()
+    viewModel: ForgotPasswordViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
 

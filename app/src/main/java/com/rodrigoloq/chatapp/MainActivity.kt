@@ -9,7 +9,9 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
 import com.rodrigoloq.chatapp.navigation.AppNavigation
 import com.rodrigoloq.chatapp.ui.theme.ChatAppTheme
+import dagger.hilt.android.AndroidEntryPoint
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
     private val viewModel: MainViewModel by viewModels()

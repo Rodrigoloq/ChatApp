@@ -5,11 +5,12 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
 import com.rodrigoloq.chatapp.utis.Utils
 import kotlinx.coroutines.tasks.await
+import javax.inject.Inject
 
-class RegisterRepository {
-    private val firebaseAuth = FirebaseAuth.getInstance()
-    private val firebaseDatabase = FirebaseDatabase.getInstance()
-
+class RegisterRepository @Inject constructor(
+    private val firebaseAuth: FirebaseAuth,
+    private val firebaseDatabase: FirebaseDatabase
+) {
     suspend fun registerUser(email: String,
                              password: String,
                               names: String): Result<Unit>{

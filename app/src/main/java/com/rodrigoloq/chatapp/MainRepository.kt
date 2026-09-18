@@ -2,10 +2,13 @@ package com.rodrigoloq.chatapp
 
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
+import javax.inject.Inject
 
-class MainRepository {
-    private val firebaseAuth = FirebaseAuth.getInstance()
-    private val firebaseDatabase = FirebaseDatabase.getInstance()
+class MainRepository @Inject constructor(
+    private val firebaseAuth: FirebaseAuth,
+    private val firebaseDatabase: FirebaseDatabase
+) {
+
 
     fun updateStatus(status: String) {
         if(firebaseAuth.currentUser != null){

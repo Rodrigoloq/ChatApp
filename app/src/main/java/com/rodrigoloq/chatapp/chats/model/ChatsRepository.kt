@@ -11,12 +11,13 @@ import com.rodrigoloq.chatapp.entities.ChatWithLastMessageAndUser
 import com.rodrigoloq.chatapp.entities.Chats
 import com.rodrigoloq.chatapp.entities.User
 import kotlinx.coroutines.tasks.await
+import javax.inject.Inject
 import kotlin.collections.plus
 
-class ChatsRepository {
-    private val firebaseDatabase = FirebaseDatabase.getInstance()
-    private val firebaseAuth = FirebaseAuth.getInstance()
-
+class ChatsRepository @Inject constructor(
+    private val firebaseDatabase: FirebaseDatabase,
+    private val firebaseAuth: FirebaseAuth
+){
     suspend fun loadAllChatInformation(): Result<List<ChatWithLastMessageAndUser>>{
         try {
             val myUid = firebaseAuth.currentUser!!.uid

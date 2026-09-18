@@ -6,12 +6,12 @@ import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
 import com.rodrigoloq.chatapp.entities.User
+import javax.inject.Inject
 
-class UsersRepository {
-
-    private val firebaseAuth = FirebaseAuth.getInstance()
-    private val firebaseDatabase = FirebaseDatabase.getInstance()
-
+class UsersRepository @Inject constructor(
+    private val firebaseAuth: FirebaseAuth,
+    private val firebaseDatabase: FirebaseDatabase
+){
     fun loadUsers(onLoad:(List<User>?) -> Unit){
         val firebaseUserUid = firebaseAuth.currentUser!!.uid
         val reference = firebaseDatabase

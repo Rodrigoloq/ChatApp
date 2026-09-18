@@ -6,15 +6,17 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import com.rodrigoloq.chatapp.entities.User
 import com.rodrigoloq.chatapp.users.model.UsersRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import javax.inject.Inject
 
-class UsersViewModel : ViewModel() {
-
-    private val usersRepository = UsersRepository()
-
+@HiltViewModel
+class UsersViewModel @Inject constructor(
+    private val usersRepository: UsersRepository
+): ViewModel() {
     private val _uiState = MutableStateFlow(UsersUIState())
     val uiState: StateFlow<UsersUIState> = _uiState.asStateFlow()
 

@@ -4,6 +4,8 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     id("com.google.gms.google-services")
+    alias(libs.plugins.kotlin.ksp)
+    alias(libs.plugins.hilt)
 }
 
 val localProperties = Properties()
@@ -96,6 +98,10 @@ dependencies {
     // messaging auth
     implementation("com.google.auth:google-auth-library-oauth2-http:1.46.0")
     implementation("com.google.api-client:google-api-client:2.9.0")
+    //hilt
+    implementation(libs.hilt.android)
+    ksp(libs.hilt.compiler)
+    implementation(libs.androidx.hilt.navigation.compose)
 
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

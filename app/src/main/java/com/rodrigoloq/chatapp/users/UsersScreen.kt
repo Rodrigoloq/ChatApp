@@ -22,33 +22,38 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.rodrigoloq.chatapp.users.viewmodel.UsersViewModel
 import com.rodrigoloq.chatapp.ui.theme.ChatAppTheme
+import com.rodrigoloq.chatapp.users.viewmodel.UsersUIState
 
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 fun UsersViewPreview(){
     ChatAppTheme() {
-        UsersView(navController = rememberNavController())
+        UsersViewContent(
+            state = UsersUIState(),
+            modifier = Modifier,
+            navController = rememberNavController(),
+            loadUsers = {  }
+        ) { }
     }
 }
 
-
 @Composable
-fun UsersView(modifier: Modifier = Modifier,
-              navController: NavController,
-              viewModel: UsersViewModel = viewModel()){
-
-    val uiState by viewModel.uiState.collectAsState()
-
+fun UsersViewContent(state: UsersUIState,
+                     modifier: Modifier,
+                     navController: NavController,
+                     loadUsers: () -> Unit,
+                     onSearchChange:(String) -> Unit){
     LaunchedEffect(Unit) {
-        viewModel.loadUsers()
+        loadUsers()
     }
     Scaffold() {
-        Column(modifier = Modifier
+        Column(modifier = modifier
             .fillMaxSize()
             .padding(it),
             horizontalAlignment = Alignment.CenterHorizontally){
@@ -56,23 +61,23 @@ fun UsersView(modifier: Modifier = Modifier,
                 .fillMaxWidth()
                 .padding(horizontal = 5.dp),
                 singleLine = true,
-                value = uiState.searchQuery,
+                value = state.searchQuery,
                 onValueChange = {
-                    viewModel.onSearchChange(it)
+                    onSearchChange(it)
                 },
                 placeholder = {},
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                 label = {
                     Text("Buscar un usuario")
                 })
-            if(uiState.inProgress){
+            if(state.inProgress){
                 Text("Cargando usuarios...")
             }else{
                 LazyColumn(modifier = Modifier
                     .fillMaxWidth()
                     .padding(all = 5.dp)) {
-                    items(uiState.filteredUsers.size){index ->
-                        val user = uiState.filteredUsers[index]
+                    items(state.filteredUsers.size){index ->
+                        val user = state.filteredUsers[index]
                         ItemUserView(user) {
                             navController.navigate("chat" + "/${user.uid}")
                         }
@@ -81,4 +86,27 @@ fun UsersView(modifier: Modifier = Modifier,
             }
         }
     }
+}
+
+
+@Composable
+fun UsersView(modifier: Modifier = Modifier,
+              navController: NavController,
+              viewModel: UsersViewModel = hiltViewModel()
+){
+
+    val uiState by viewModel.uiState.collectAsState()
+
+    UsersViewContent(
+        state = uiState,
+        modifier = modifier,
+        navController = navController,
+        loadUsers = {
+            viewModel.loadUsers()
+        },
+        onSearchChange = {
+            viewModel.onSearchChange(it)
+        }
+    )
+
 }

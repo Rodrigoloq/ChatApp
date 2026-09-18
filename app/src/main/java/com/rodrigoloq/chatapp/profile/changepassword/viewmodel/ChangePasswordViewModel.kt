@@ -8,14 +8,19 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rodrigoloq.chatapp.profile.model.ProfileRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
-class ChangePasswordViewModel : ViewModel() {
-    private val profileRepository = ProfileRepository()
+@HiltViewModel
+class ChangePasswordViewModel @Inject constructor(
+    private val profileRepository: ProfileRepository
+): ViewModel() {
+
     private val _uiState = MutableStateFlow(ChangePasswordUIState())
     val uiState: StateFlow<ChangePasswordUIState> = _uiState.asStateFlow()
 

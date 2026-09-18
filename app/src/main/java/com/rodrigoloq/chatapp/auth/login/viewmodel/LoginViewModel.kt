@@ -8,15 +8,19 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.rodrigoloq.chatapp.auth.model.AuthRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
-class LoginViewModel : ViewModel() {
+@HiltViewModel
+class LoginViewModel @Inject constructor(
+    private val authRepository: AuthRepository
+) : ViewModel() {
 
-    private val authRepository = AuthRepository()
     private val _uiState = MutableStateFlow(LoginUIState())
     val uiState: StateFlow<LoginUIState> = _uiState.asStateFlow()
 

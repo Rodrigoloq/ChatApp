@@ -1,10 +1,13 @@
 package com.rodrigoloq.chatapp
 
 import androidx.lifecycle.ViewModel
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 
-class MainViewModel : ViewModel(){
-    private val mainRepository = MainRepository()
-
+@HiltViewModel
+class MainViewModel @Inject constructor(
+    private val mainRepository: MainRepository
+): ViewModel(){
     fun updateStatus(status: String){
         mainRepository.updateStatus(status)
     }

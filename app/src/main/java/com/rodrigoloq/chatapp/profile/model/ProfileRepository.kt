@@ -11,12 +11,13 @@ import com.google.firebase.storage.FirebaseStorage
 import com.google.firebase.storage.UploadTask
 import com.rodrigoloq.chatapp.entities.User
 import kotlinx.coroutines.tasks.await
+import javax.inject.Inject
 
-class ProfileRepository {
-    private val firebaseAuth = FirebaseAuth.getInstance()
-    private val firebaseDatabase = FirebaseDatabase.getInstance()
-    private val firebaseStorage = FirebaseStorage.getInstance()
-
+class ProfileRepository @Inject constructor(
+    private val firebaseAuth: FirebaseAuth,
+    private val firebaseDatabase: FirebaseDatabase,
+    private val firebaseStorage: FirebaseStorage
+){
     suspend fun singOut2(){
         if (updateStatus("Offline")) firebaseAuth.signOut()
     }
@@ -40,8 +41,7 @@ class ProfileRepository {
             val hashMap = HashMap<String, Any>()
             hashMap["fcmToken"] = result
 
-            FirebaseDatabase
-                .getInstance()
+            firebaseDatabase
                 .getReference("users")
                 .child(firebaseAuth.uid!!)
                 .updateChildren(hashMap).await()

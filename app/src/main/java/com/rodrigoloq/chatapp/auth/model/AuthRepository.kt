@@ -16,11 +16,13 @@ import com.rodrigoloq.chatapp.utis.Utils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
+import javax.inject.Inject
 import kotlin.math.log
 
-class AuthRepository {
-    private val firebaseAuth = FirebaseAuth.getInstance()
-
+class AuthRepository @Inject constructor(
+    private val firebaseAuth: FirebaseAuth,
+    private val firebaseDatabase: FirebaseDatabase
+){
     suspend fun updateStatus(status: String): Boolean {
         if (firebaseAuth.currentUser != null) {
 
@@ -28,8 +30,7 @@ class AuthRepository {
             hashMap["status"] = status
 
             try {
-                FirebaseDatabase
-                    .getInstance()
+                firebaseDatabase
                     .reference
                     .child("users")
                     .child(firebaseAuth.uid!!)
@@ -79,8 +80,7 @@ class AuthRepository {
         userData["image"] = ""
 
         try {
-            FirebaseDatabase
-                .getInstance()
+            firebaseDatabase
                 .getReference("users")
                 .child(userUid!!)
                 .setValue(userData).await()
