@@ -12,26 +12,26 @@ class UsersRepository {
     private val firebaseAuth = FirebaseAuth.getInstance()
     private val firebaseDatabase = FirebaseDatabase.getInstance()
 
-    fun loadUsers(onLoad:(List<User>) -> Unit) {
-        val firebaseUser = firebaseAuth.currentUser!!.uid
+    fun loadUsers(onLoad:(List<User>?) -> Unit){
+        val firebaseUserUid = firebaseAuth.currentUser!!.uid
         val reference = firebaseDatabase
             .reference.child("users").orderByChild("names")
-        reference.addValueEventListener(object : ValueEventListener {
+
+        reference.addListenerForSingleValueEvent(object : ValueEventListener{
+            val list = mutableListOf<User>()
             override fun onDataChange(snapshot: DataSnapshot) {
-                val list = mutableListOf<User>()
-
-                snapshot.children.forEach { child ->
-                    val user = child.getValue(User::class.java)
-
-                    if(!(user!!.uid).equals(firebaseUser)){
-                        user.let { list.add(it) }
+                for (userSnapshot in snapshot.children){
+                    val user = userSnapshot.getValue(User::class.java)
+                    if (user != null){
+                        if (user.uid != firebaseUserUid){
+                            list.add(user)
+                        }
                     }
                 }
-                onLoad(list)
+               onLoad(list)
             }
-
-            override fun onCancelled(p0: DatabaseError) {
-
+            override fun onCancelled(error: DatabaseError) {
+                onLoad(null)
             }
         })
     }

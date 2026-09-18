@@ -1,62 +1,73 @@
 package com.rodrigoloq.chatapp.auth.model
 
 import android.content.Context
+import android.util.Log
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.firebase.auth.AuthResult
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseAuthException
+import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.database.FirebaseDatabase
 import com.rodrigoloq.chatapp.BuildConfig
 import com.rodrigoloq.chatapp.utis.Utils
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
+import kotlin.math.log
 
 class AuthRepository {
     private val firebaseAuth = FirebaseAuth.getInstance()
 
-    fun updateStatus(status: String) {
-        if(firebaseAuth.currentUser != null){
-            val ref = FirebaseDatabase
-                .getInstance().reference.child("users").child(firebaseAuth.uid!!)
+    suspend fun updateStatus(status: String): Boolean {
+        if (firebaseAuth.currentUser != null) {
 
             val hashMap = HashMap<String, Any>()
             hashMap["status"] = status
-            ref.updateChildren(hashMap)
+
+            try {
+                FirebaseDatabase
+                    .getInstance()
+                    .reference
+                    .child("users")
+                    .child(firebaseAuth.uid!!)
+                    .updateChildren(hashMap).await()
+                return true
+            } catch (e: Exception) {
+                Log.e("RLTAG", "updateStatus: ${e.message}")
+                return false
+            }
+        } else {
+            return false
         }
     }
 
-    fun getGoogleSignInClient(context: Context): GoogleSignInClient {
+    fun getGoogleSignInOptions(): GoogleSignInOptions {
         val idToken = BuildConfig.ID_TOKEN
-        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+        return GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
             .requestIdToken(idToken)
             .requestEmail()
             .build()
-        return GoogleSignIn.getClient(context, gso)
     }
 
-    fun authGoogleAccount(idToken: String?,
-                          onAuth: (Boolean, String?, Boolean) -> Unit) {
+    suspend fun authGoogleAccount(idToken: String?): Result<AuthResult> {
         val credential = GoogleAuthProvider.getCredential(idToken, null)
-        firebaseAuth.signInWithCredential(credential)
-            .addOnSuccessListener { authResult ->
-                if(authResult.additionalUserInfo!!.isNewUser){
-                    //subir datos a bd
-                    onAuth(true, null, true)
-                }else{
-                    //navegar
-                    onAuth(true, null, false)
-                }
-            }
-            .addOnFailureListener { e ->
-                onAuth(false, e.message, false)
-            }
+        try {
+            val result = firebaseAuth.signInWithCredential(credential).await()
+            return Result.success(result)
+        } catch (e: Exception) {
+            Log.e("RLTAG", "authGoogleAccount: ${e.message}")
+            return Result.failure(e)
+        }
     }
 
-    fun updateUserInfo(onError:(String?) -> Unit) {
+    suspend fun updateUserInfo(): String {
         val userUid = firebaseAuth.uid
         val userNames = firebaseAuth.currentUser!!.displayName
         val userEmail = firebaseAuth.currentUser!!.email
         val registerTime = Utils().getDeviceTime()
-
         val userData = HashMap<String, Any>()
 
         userData["uid"] = "$userUid"
@@ -67,37 +78,41 @@ class AuthRepository {
         userData["status"] = "Online"
         userData["image"] = ""
 
-        val reference = FirebaseDatabase.getInstance().getReference("users")
-        reference.child(userUid!!)
-            .setValue(userData)
-            .addOnSuccessListener {
-                onError(null)
-            }
-            .addOnFailureListener { e ->
-                onError(e.message)
-            }
+        try {
+            FirebaseDatabase
+                .getInstance()
+                .getReference("users")
+                .child(userUid!!)
+                .setValue(userData).await()
+            return ""
+        } catch (e: Exception) {
+            Log.e("RLTAG", "updateUserInfo: ${e.message}")
+            return "Error: ${e.message}"
+        }
     }
 
-    fun loginUser(email: String,
-                  password: String,
-                  onError:(String?) -> Unit){
-        firebaseAuth.signInWithEmailAndPassword(email,password)
-            .addOnSuccessListener {
-                updateStatus("Online")
-                onError(null)
-            }
-            .addOnFailureListener { e->
-                onError(e.message)
-            }
+    suspend fun loginUser(
+        email: String,
+        password: String
+    ): Result<FirebaseUser?> {
+        try {
+            val login = firebaseAuth
+                .signInWithEmailAndPassword(email, password).await()
+
+            return Result.success(login.user)
+        } catch (e: Exception) {
+            Log.e("RLTAG", "loginUser: ${e.message}")
+            return Result.failure(e)
+        }
     }
 
-    fun sendInstructions(email: String, onError:(String?) -> Unit){
-        firebaseAuth.sendPasswordResetEmail(email)
-            .addOnSuccessListener {
-                onError(null)
-            }
-            .addOnFailureListener {e->
-                onError(e.message)
-            }
+    suspend fun sendInstructions(email: String): String {
+        try {
+            firebaseAuth.sendPasswordResetEmail(email).await()
+            return ""
+        } catch (e: Exception) {
+            Log.e("RLTAG", "sendInstructions: ${e.message}")
+            return "Fallo el envio de instrucciones debido a: ${e.message}"
+        }
     }
 }

@@ -36,7 +36,6 @@ import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.rodrigoloq.chatapp.R
 import com.rodrigoloq.chatapp.entities.Chat
-import com.rodrigoloq.chatapp.chat.viewmodel.ItemChatViewModel
 import com.rodrigoloq.chatapp.ui.theme.ChatAppTheme
 import com.rodrigoloq.chatapp.utis.Utils
 import net.engawapg.lib.zoomable.rememberZoomState
@@ -50,16 +49,18 @@ fun ItemChatViewPreview(){
                 "Fusce euismod diam.",
             "",
             "TEXTO",
-            "asdfasdf",
-            "TEXTO",
-            123123)){}
+            "",
+            "",
+            123123), myUid = ""){}
     }
 }
 
 @Composable
-fun ItemChatView(chat: Chat,viewModel: ItemChatViewModel = viewModel(), onClick:() -> Unit){
+fun ItemChatView(chat: Chat,
+                 myUid: String,
+                 deleteMessage:() -> Unit){
     val context = LocalContext.current
-    val myUid = viewModel.myUid
+
     var showImage by remember { mutableStateOf(false) }
     val zoomState = rememberZoomState()
 
@@ -72,26 +73,14 @@ fun ItemChatView(chat: Chat,viewModel: ItemChatViewModel = viewModel(), onClick:
         if(chat.emisorUid == myUid && chat.messageType == Utils().MESSAGE_TYPE_TEXT){
             builder.setItems(optionsText) { dialog, which ->
                 if (which == 0) {
-                    viewModel.deleteMessage(chat){errorMsg ->
-                        if(errorMsg != null){
-                            Toast.makeText(context,
-                                "No se ha eliminado el mensaje debido a $errorMsg",
-                                Toast.LENGTH_SHORT).show()
-                        }
-                    }
+                    deleteMessage()
                 }
             }
             builder.show()
         } else if(chat.emisorUid == myUid && chat.messageType == Utils().MESSAGE_TYPE_IMAGE){
             builder.setItems(optionsImage) { dialog, which ->
                 if (which == 0) {
-                    viewModel.deleteMessage(chat){errorMsg ->
-                        if(errorMsg != null){
-                            Toast.makeText(context,
-                                "No se ha eliminado el mensaje debido a $errorMsg",
-                                Toast.LENGTH_SHORT).show()
-                        }
-                    }
+                    deleteMessage()
                 }
                 if (which == 1){
                     showImage = true
@@ -108,15 +97,15 @@ fun ItemChatView(chat: Chat,viewModel: ItemChatViewModel = viewModel(), onClick:
         }
     }
 
+
     Column(modifier = Modifier.padding(8.dp).clickable{
-        onClick()
         showOptions()
     }) {
         if (chat.messageType == Utils().MESSAGE_TYPE_TEXT){
             Text(fontSize = 15.sp,
                 fontWeight = FontWeight.Bold,
                 text = chat?.message ?: "",)
-            Text(text = Utils().dateFormater(chat.date!!, true),
+            Text(text = Utils().dateFormater(chat.date, true),
                 fontStyle = FontStyle.Italic,
                 modifier = Modifier.align(Alignment.End).padding(top = 5.dp))
         } else if (chat.messageType == Utils().MESSAGE_TYPE_IMAGE){
@@ -133,7 +122,7 @@ fun ItemChatView(chat: Chat,viewModel: ItemChatViewModel = viewModel(), onClick:
                 modifier = Modifier
                     .size(200.dp)
             )
-            Text(text = Utils().dateFormater(chat.date!!, true),
+            Text(text = Utils().dateFormater(chat.date, true),
                 fontStyle = FontStyle.Italic,
                 modifier = Modifier.align(Alignment.End).padding(top = 5.dp))
         }

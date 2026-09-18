@@ -1,4 +1,4 @@
-package com.rodrigoloq.chatapp.profile
+package com.rodrigoloq.chatapp.profile.editinformation
 
 import android.Manifest
 import android.app.Activity
@@ -32,10 +32,10 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -59,86 +59,134 @@ import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.rodrigoloq.chatapp.R
-import com.rodrigoloq.chatapp.profile.viewmodel.EditInfoViewModel
+import com.rodrigoloq.chatapp.profile.editinformation.viewmodel.EditInformationUIState
+import com.rodrigoloq.chatapp.profile.editinformation.viewmodel.EditInformationViewModel
 import com.rodrigoloq.chatapp.ui.theme.ChatAppTheme
 import com.rodrigoloq.chatapp.ui.theme.ProgressBackground
 import kotlin.text.trim
 
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
-fun EditInformationViewPreview(){
+fun EditInformationViewPreview() {
     ChatAppTheme() {
-        EditInformationView(Modifier,rememberNavController())
+        EditInformationViewContent(
+            state = EditInformationUIState(),
+            modifier = Modifier,
+            navController = rememberNavController(),
+            loadUserInfo = { },
+            updateNames = { }
+        ) { }
     }
 }
+
 @Composable
-fun EditInformationView(modifier: Modifier = Modifier,
-                        navController: NavController,
-                        viewModel: EditInfoViewModel = viewModel()
-){
+fun EditInformationViewContent(
+    state: EditInformationUIState,
+    modifier: Modifier,
+    navController: NavController,
+    loadUserInfo: () -> Unit,
+    updateNames: (String) -> Unit,
+    updateProfileImage: (Uri) -> Unit
+) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
     val focus = LocalFocusManager.current
-    val user = viewModel.userData
-    var imageUri : Uri? = null
-    var inProgress = viewModel.isLoading
 
     LaunchedEffect(Unit) {
-        viewModel.loadUserInfo(){errorMsg ->
-            if(errorMsg != null){
-                Toast.makeText(context,errorMsg,Toast.LENGTH_SHORT).show()
+        loadUserInfo()
+    }
+
+    LaunchedEffect(state.loadUserSuccess) {
+        when (state.loadUserSuccess) {
+            true -> Unit
+            false -> {
+                Toast.makeText(
+                    context,
+                    state.loadUserErrorMsg,
+                    Toast.LENGTH_SHORT
+                ).show()
             }
         }
     }
 
+    LaunchedEffect(state.updateNamesSuccess) {
+        when (state.updateNamesSuccess) {
+            true -> {
+                Toast.makeText(
+                    context,
+                    "Se ha actualizado correctamente su informacion",
+                    Toast.LENGTH_SHORT
+                ).show()
+                navController.popBackStack()
+            }
+
+            false -> {
+                Toast.makeText(
+                    context,
+                    state.loadUserErrorMsg,
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+
+            null -> Unit
+        }
+    }
+
+    LaunchedEffect(state.updateImageSuccess) {
+        when (state.updateImageSuccess) {
+            true -> {
+                Toast.makeText(
+                    context,
+                    "Se ha actualizado correctamente su informacion",
+                    Toast.LENGTH_SHORT
+                ).show()
+                navController.popBackStack()
+            }
+
+            false -> {
+                Toast.makeText(
+                    context,
+                    state.updateImageErrorMsg,
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+
+            null -> Unit
+        }
+    }
+
     val nameFocusRequester = remember { FocusRequester() }
-    var nameTextValue by remember(user) { mutableStateOf(user?.names ?: "") }
-    var imageValue by remember(user) { mutableStateOf(user?.image ?: "") }
+    var nameTextValue by remember(state.user) { mutableStateOf(state.user.names) }
+    var imageValue by remember(state.user) { mutableStateOf(state.user.image) }
     var blankNameError by remember { mutableStateOf(false) }
 
     val updateInfo = {
         focus.clearFocus()
-        if(blankNameError){
+        if (blankNameError) {
             nameFocusRequester.requestFocus()
         } else {
-            viewModel.updateInfoNames(nameTextValue){errorMsg ->
-                if(errorMsg == null){
-                    Toast.makeText(context,
-                        "Se actualizo su informacion",
-                        Toast.LENGTH_SHORT).show()
-                } else {
-                    Toast.makeText(context,
-                        errorMsg,
-                        Toast.LENGTH_SHORT).show()
-                }
-            }
+//            viewModel.updateInfoNames(nameTextValue){errorMsg ->
+//                if(errorMsg == null){
+//                    Toast.makeText(context,
+//                        "Se actualizo su informacion",
+//                        Toast.LENGTH_SHORT).show()
+//                } else {
+//                    Toast.makeText(context,
+//                        errorMsg,
+//                        Toast.LENGTH_SHORT).show()
+//                }
+//            }
+            updateNames(nameTextValue)
         }
     }
 
     val galleryARL = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->
-        if(result.resultCode == Activity.RESULT_OK){
+        if (result.resultCode == Activity.RESULT_OK) {
             val data = result.data
-            imageUri = data!!.data
-            viewModel.uploadImageToStorage(imageUri){urlLoadedImage, errorMsg ->
-                if(errorMsg == null){
-                    viewModel.uploadInfoImage(urlLoadedImage!!, imageUri){errorMsg ->
-                        if (errorMsg == null){
-                            Toast.makeText(context,
-                                "Error al actualizar la imagen debido a: $errorMsg",
-                                Toast.LENGTH_SHORT).show()
-                        } else {
-                            Toast.makeText(context,
-                                errorMsg,
-                                Toast.LENGTH_SHORT).show()
-                        }
-                    }
-                } else {
-                    Toast.makeText(context,
-                        "Error al subir la imagen debido a: $errorMsg",
-                        Toast.LENGTH_SHORT).show()
-                }
+            val imageUri = data!!.data
+            if (imageUri != null) {
+                updateProfileImage(imageUri)
             }
         } else {
             Toast.makeText(
@@ -158,9 +206,9 @@ fun EditInformationView(modifier: Modifier = Modifier,
     val requestStoragePermit = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { isAllowed ->
-        if(isAllowed){
+        if (isAllowed) {
             openGallery()
-        }else{
+        } else {
             Toast.makeText(
                 context,
                 "Permiso de almacenamiento denegado",
@@ -170,7 +218,7 @@ fun EditInformationView(modifier: Modifier = Modifier,
     }
 
     val updateImage = {
-        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU){
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             openGallery()
         } else {
             requestStoragePermit.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
@@ -181,26 +229,36 @@ fun EditInformationView(modifier: Modifier = Modifier,
         focus.clearFocus()
         updateImage()
     }
-    
-    Scaffold() {it ->
-        Column(modifier = Modifier.padding(it)
-            .fillMaxSize()) {
+
+    Scaffold() { it ->
+        Column(
+            modifier = modifier
+                .padding(it)
+                .fillMaxSize()
+        ) {
             Box(modifier = Modifier.fillMaxWidth()) {
-                Icon(painter = painterResource(R.drawable.ic_arrow_back),
+                Icon(
+                    painter = painterResource(R.drawable.ic_arrow_back),
                     contentDescription = null,
-                    modifier = Modifier.padding(10.dp)
-                        .clickable{
+                    modifier = Modifier
+                        .padding(10.dp)
+                        .clickable {
                             //navController.navigate("main")
                             navController.popBackStack()
                         })
-                Text(text = "Editar informacion",
+                Text(
+                    text = "Editar informacion",
                     modifier = Modifier.align(Alignment.Center),
                     fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp)
+                    fontSize = 16.sp
+                )
             }
             HorizontalDivider(thickness = 1.dp)
-            Box(modifier = Modifier.align(Alignment.CenterHorizontally)
-                .padding(10.dp)){
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .padding(10.dp)
+            ) {
                 AsyncImage(
                     model = ImageRequest.Builder(LocalContext.current)
                         .data(imageValue)
@@ -224,40 +282,47 @@ fun EditInformationView(modifier: Modifier = Modifier,
                         .clip(CircleShape)
                         .size(50.dp)
                         .align(Alignment.TopEnd)
-                        .clickable{
+                        .clickable {
                             updateImageToDB()
                         }
                 )
             }
-            OutlinedTextField(modifier = Modifier.fillMaxWidth()
-                .padding(top = 10.dp, start = 10.dp, end = 10.dp)
-                .focusRequester(nameFocusRequester),
+            OutlinedTextField(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 10.dp, start = 10.dp, end = 10.dp)
+                    .focusRequester(nameFocusRequester),
                 singleLine = true,
                 value = nameTextValue,
                 onValueChange = {
                     blankNameError = it.trim().isEmpty()
-                    nameTextValue = it },
+                    nameTextValue = it
+                },
                 supportingText = {
-                    if(blankNameError)
-                        Text(text = "Ingrese nombres",
-                            color = MaterialTheme.colorScheme.error)
+                    if (blankNameError)
+                        Text(
+                            text = "Ingrese nombres",
+                            color = MaterialTheme.colorScheme.error
+                        )
                 },
                 isError = blankNameError,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
                 label = {
                     Text("Nombres")
                 })
-            Button(modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 10.dp, start = 10.dp, end = 10.dp),
+            Button(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 10.dp, start = 10.dp, end = 10.dp),
                 onClick = {
                     updateInfo()
                 },
-                shape = RoundedCornerShape(8.dp)) {
+                shape = RoundedCornerShape(8.dp)
+            ) {
                 Text(text = "ACTUALIZAR")
             }
         }
-        if(inProgress){
+        if (state.inProgress) {
             Box(
                 Modifier
                     .fillMaxSize()
@@ -269,4 +334,28 @@ fun EditInformationView(modifier: Modifier = Modifier,
             }
         }
     }
+}
+
+@Composable
+fun EditInformationView(
+    modifier: Modifier = Modifier,
+    navController: NavController,
+    viewModel: EditInformationViewModel = viewModel()
+) {
+    val uiState by viewModel.uiState.collectAsState()
+
+    EditInformationViewContent(
+        state = uiState,
+        modifier = modifier,
+        navController = navController,
+        loadUserInfo = {
+            viewModel.loadUserInfo()
+        },
+        updateNames = { names ->
+            viewModel.updateNames(names)
+        },
+        updateProfileImage = { uri ->
+            viewModel.updateProfileImage(uri)
+        }
+    )
 }

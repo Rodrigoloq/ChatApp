@@ -11,6 +11,11 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -37,9 +42,7 @@ fun UsersView(modifier: Modifier = Modifier,
               navController: NavController,
               viewModel: UsersViewModel = viewModel()){
 
-    val userList = viewModel.filteredUsers
-    val query = viewModel.searchQuery
-    val inProgress = viewModel.inProgress
+    val uiState by viewModel.uiState.collectAsState()
 
     LaunchedEffect(Unit) {
         viewModel.loadUsers()
@@ -49,30 +52,33 @@ fun UsersView(modifier: Modifier = Modifier,
             .fillMaxSize()
             .padding(it),
             horizontalAlignment = Alignment.CenterHorizontally){
-            OutlinedTextField(modifier = Modifier.fillMaxWidth().padding(horizontal = 5.dp),
+            OutlinedTextField(modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 5.dp),
                 singleLine = true,
-                value = query,
+                value = uiState.searchQuery,
                 onValueChange = {
-                    viewModel.onSearchChange(it)},
+                    viewModel.onSearchChange(it)
+                },
                 placeholder = {},
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                 label = {
                     Text("Buscar un usuario")
                 })
-            if(inProgress){
+            if(uiState.inProgress){
                 Text("Cargando usuarios...")
             }else{
-                LazyColumn(modifier = Modifier.fillMaxWidth().padding(all = 5.dp)) {
-                    items(userList.size){index ->
-                        val user = userList[index]
+                LazyColumn(modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(all = 5.dp)) {
+                    items(uiState.filteredUsers.size){index ->
+                        val user = uiState.filteredUsers[index]
                         ItemUserView(user) {
                             navController.navigate("chat" + "/${user.uid}")
                         }
                     }
-            }
+                }
             }
         }
     }
-
-
 }

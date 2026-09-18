@@ -37,16 +37,19 @@ class MyFcmService : FirebaseMessagingService() {
         }
     }
 
+
+
     override fun onMessageReceived(message: RemoteMessage) {
         super.onMessageReceived(message)
         if(message.notification != null){
             val senderUid = message.data["senderUid"]
-
-            showNotification(
-                message.notification?.title,
-                message.notification?.body,
-                senderUid ?: "Desconocido"
-            )
+            if (senderUid != firebaseAuth.currentUser!!.uid){
+                showNotification(
+                    message.notification?.title,
+                    message.notification?.body,
+                    senderUid ?: "Desconocido"
+                )
+            }
         }
     }
 

@@ -2,6 +2,7 @@ package com.rodrigoloq.chatapp.chat
 
 import android.Manifest
 import android.app.Activity
+import android.app.AlertDialog
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -36,6 +37,7 @@ import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -57,6 +59,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
@@ -64,10 +67,13 @@ import com.android.volley.Request.Method
 import com.android.volley.Response
 import com.android.volley.toolbox.JsonObjectRequest
 import com.android.volley.toolbox.Volley
+import com.google.android.play.core.integrity.v
 import com.google.auth.oauth2.GoogleCredentials
 import com.rodrigoloq.chatapp.R
+import com.rodrigoloq.chatapp.chat.viewmodel.ChatUIState
 import com.rodrigoloq.chatapp.entities.Chat
 import com.rodrigoloq.chatapp.chat.viewmodel.ChatViewModel
+import com.rodrigoloq.chatapp.ui.theme.ChatAppTheme
 import com.rodrigoloq.chatapp.ui.theme.ProgressBackground
 import com.rodrigoloq.chatapp.utis.Utils
 import kotlinx.coroutines.CoroutineScope
@@ -76,68 +82,130 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 
+@Preview(showBackground = true, showSystemUi = true)
+@Composable
+fun ChatViewPreview() {
+    ChatAppTheme() {
+        ChatViewContent(
+            state = ChatUIState(),
+            modifier = Modifier,
+            navController = rememberNavController(),
+            uid = "TODO()",
+            loadAllInformation = {
+
+            },
+            loadMessages = {
+
+            },
+            sendImageMessage = { uri, uid, date ->
+
+            },
+            sendMessage = { uid, messageType, message, date ->
+
+            }
+        ) { }
+    }
+}
 
 @Composable
-fun ChatView(modifier: Modifier = Modifier,
-             navController: NavController,
-             uid: String?,
-             viewModel: ChatViewModel = viewModel()){
+fun ChatViewContent(
+    state: ChatUIState,
+    modifier: Modifier,
+    navController: NavController,
+    uid: String?,
+    loadAllInformation: (String) -> Unit,
+    loadMessages: (String) -> Unit,
+    sendImageMessage: (Uri, String, Long) -> Unit,
+    sendMessage: (String, String, String, Long) -> Unit,
+    deleteMessage: (Chat) -> Unit
+) {
+
 
     val context = LocalContext.current
-
-    var inProgress = viewModel.inProgress
-    val user = viewModel.userData
-    val myUser = viewModel.myUserData
-    val chatList = viewModel.chats
-    val chatlistOrdered = chatList.reversed()
-
-    var imageUri : Uri? = null
-
+    val chats = state.chats
+    val chatsOrdered = chats.reversed()
     val listState = rememberLazyListState()
 
-
+    var chatTextValue by remember { mutableStateOf("") }
 
     LaunchedEffect(Unit) {
-        viewModel.loadMessages(uid!!){errorMsg ->
-            if (errorMsg != null){
+        loadAllInformation(uid!!)
+    }
+
+    LaunchedEffect(state.loadChatsSuccess) {
+        when (state.loadChatsSuccess) {
+            true -> Unit
+            false -> {
                 Toast.makeText(
                     context,
-                    "Error al cargar los mensajes",
-                    Toast.LENGTH_SHORT
-                ).show()
-            }
-        }
-        viewModel.loadUserInfo(uid!!){errorMsg ->
-            if (errorMsg != null){
-                Toast.makeText(
-                    context,
-                    "Error al cargar la informacion del usuario",
-                    Toast.LENGTH_SHORT
-                ).show()
-            }
-        }
-        viewModel.loadMyInfo(){errorMsg ->
-            if (errorMsg != null){
-                Toast.makeText(
-                    context,
-                    "Error al cargar la informacion del usuario",
+                    state.loadChatsErrorMsg,
                     Toast.LENGTH_SHORT
                 ).show()
             }
         }
     }
 
-    var ChatTextValue by remember { mutableStateOf("") }
+    LaunchedEffect(state.loadUserSuccess) {
+        when (state.loadUserSuccess) {
+            true -> Unit
+            false -> {
+                Toast.makeText(
+                    context,
+                    state.loadUserErrorMsg,
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
+    }
+
+    LaunchedEffect(state.loadMyUserSuccess) {
+        when (state.loadMyUserSuccess) {
+            true -> Unit
+            false -> {
+                Toast.makeText(
+                    context,
+                    state.loadMyUserErrorMsg,
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
+    }
+
+    LaunchedEffect(state.deleteMessageSuccess) {
+        when (state.deleteMessageSuccess) {
+            true -> {
+                Toast.makeText(
+                    context,
+                    "Mensaje eliminado",
+                    Toast.LENGTH_SHORT
+                ).show()
+                loadMessages(uid!!)
+            }
+
+            false -> {
+                Toast.makeText(
+                    context,
+                    state.deleteMessageErrorMsg,
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+
+            null -> Unit
+        }
+    }
+
+
+
 
     //ENVIAR NOTIFICACIONES
-    fun getAccessToken(): String?{
+    fun getAccessToken(): String? {
         return try {
             val serviceAccount = context.assets.open("service-account.json")
             val googleCredentials = GoogleCredentials.fromStream(serviceAccount)
                 .createScoped(listOf("https://www.googleapis.com/auth/firebase.messaging"))
             googleCredentials.refreshIfExpired()
             googleCredentials.accessToken.tokenValue
-        }catch (e: Exception){
+        } catch (e: Exception) {
             null
         }
     }
@@ -146,7 +214,7 @@ fun ChatView(modifier: Modifier = Modifier,
         CoroutineScope(Dispatchers.IO).launch {
             val url = "https://fcm.googleapis.com/v1/projects/chatapp-e6339/messages:send"
             val accessToken = getAccessToken()
-            if(accessToken != null){
+            if (accessToken != null) {
                 withContext(Dispatchers.Main) {
                     val jsonObjectRequest: JsonObjectRequest = object : JsonObjectRequest(
                         Method.POST,
@@ -156,7 +224,7 @@ fun ChatView(modifier: Modifier = Modifier,
                             //exitosa
                         },
                         Response.ErrorListener {
-                            //no es exitosa
+                            //error
                         }
                     ) {
                         override fun getHeaders(): Map<String?, String?>? {
@@ -174,60 +242,62 @@ fun ChatView(modifier: Modifier = Modifier,
         }
     }
 
-    fun prepareNotification(message: String, context: Context){
+    fun prepareNotification(message: String) {
         val notificationJo = JSONObject()
         val messageJo = JSONObject()
         val notificationPayload = JSONObject()
         val messageData = JSONObject()
 
         try {
-            notificationPayload.put("title",myUser?.names ?: "Nuevo mensaje")
-            notificationPayload.put("body",message)
+            notificationPayload.put("title", state.myUser.names)
+            notificationPayload.put("body", message)
 
-            messageData.put("notificationType","new_message")
-            messageData.put("senderUid",myUser!!.uid)
+            messageData.put("notificationType", "new_message")
+            messageData.put("senderUid", state.myUser.uid)
 
-            messageJo.put("token",user!!.fcmToken)
-            messageJo.put("notification",notificationPayload)
-            messageJo.put("data",messageData)
+            messageJo.put("token", state.user.fcmToken)
+            messageJo.put("notification", notificationPayload)
+            messageJo.put("data", messageData)
 
-            notificationJo.put("message",messageJo)
-        }catch (e: Exception){
+            notificationJo.put("message", messageJo)
+        } catch (e: Exception) {
             e.printStackTrace()
         }
         sendNotification(notificationJo)
+    }
+
+    LaunchedEffect(state.sendMessageSuccess) {
+        when (state.sendMessageSuccess) {
+            true -> {
+                loadMessages(uid!!)
+                prepareNotification(chatTextValue.ifEmpty { "Te ha enviado una imagen" })
+                chatTextValue = ""
+            }
+
+            false -> {
+                Toast.makeText(
+                    context,
+                    state.sendMessageErrorMsg,
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+
+            null -> Unit
+        }
     }
 
     //ENVIAR IMAGENES
     val galleryARL = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->
-        if(result.resultCode == Activity.RESULT_OK){
+        if (result.resultCode == Activity.RESULT_OK) {
             val data = result.data
-            imageUri = data!!.data
-            viewModel.uploadImageToStorage(uid!!, imageUri){errorMsg, urlImage ->
-                if (errorMsg == null){
-                    viewModel.sendMessage(uid,
-                        Utils().MESSAGE_TYPE_IMAGE,
-                        urlImage!!,
-                        Utils().getDeviceTime()){errorMsg ->
-                        if (errorMsg != null){
-                            Toast.makeText(
-                                context,
-                                "Error al enviar el mensaje",
-                                Toast.LENGTH_SHORT
-                            ).show()
-                        }
-                    }
-                    viewModel.loadMessages(uid){}
-                    prepareNotification("Te envio una imagen", context)
-                } else {
-                    Toast.makeText(
-                        context,
-                        "Error al subir la imagen",
-                        Toast.LENGTH_SHORT
-                    ).show()
-                }
+            val imageUri = data!!.data
+            if (imageUri != null) {
+                sendImageMessage(
+                    imageUri, uid!!,
+                    Utils().getDeviceTime()
+                )
             }
         } else {
             Toast.makeText(
@@ -247,9 +317,9 @@ fun ChatView(modifier: Modifier = Modifier,
     val requestStoragePermit = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { isAllowed ->
-        if(isAllowed){
+        if (isAllowed) {
             openGallery()
-        }else{
+        } else {
             Toast.makeText(
                 context,
                 "Permiso de almacenamiento denegado",
@@ -259,7 +329,7 @@ fun ChatView(modifier: Modifier = Modifier,
     }
 
     val updateImage = {
-        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU){
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             openGallery()
         } else {
             requestStoragePermit.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
@@ -272,23 +342,12 @@ fun ChatView(modifier: Modifier = Modifier,
 
     val sendMessage = {
         val date = Utils().getDeviceTime()
-        if(!ChatTextValue.trim().isEmpty()){
-            viewModel.sendMessage(uid!!,
-                Utils().MESSAGE_TYPE_TEXT,
-                ChatTextValue,
-                date){errorMsg ->
-                if(errorMsg != null){
-                    Toast.makeText(
-                        context,
-                        "Error al enviar el mensaje",
-                        Toast.LENGTH_SHORT
-                    ).show()
-                }
-            }
-            viewModel.loadMessages(uid){}
-            prepareNotification(ChatTextValue,context)
-            ChatTextValue = ""
-        }else{
+        if (!chatTextValue.trim().isEmpty()) {
+            sendMessage(
+                uid!!, Utils().MESSAGE_TYPE_TEXT,
+                chatTextValue, date
+            )
+        } else {
             Toast.makeText(
                 context,
                 "Ingrese un mensaje",
@@ -297,74 +356,96 @@ fun ChatView(modifier: Modifier = Modifier,
         }
     }
 
-    Scaffold(){
-        Column(modifier = modifier
-            .fillMaxSize()
-            .padding(it),
-            horizontalAlignment = Alignment.CenterHorizontally){
-                Box(modifier = Modifier.fillMaxWidth()) {
-                    Icon(painter = painterResource(R.drawable.ic_arrow_back),
-                        contentDescription = null,
-                        modifier = Modifier
-                            .padding(10.dp)
-                            .clickable {
-                                navController.popBackStack()
-                            })
-                    Row(modifier = Modifier.align(Alignment.Center)) {
-                        Box(modifier = Modifier.padding(end = 8.dp)){
-                            AsyncImage(
-                                model = ImageRequest.Builder(LocalContext.current)
-                                    .data(user?.image ?: "")
-                                    .crossfade(true)
-                                    .build(),
-                                contentDescription = null,
-                                placeholder = painterResource(R.drawable.perfil_user),
-                                error = rememberVectorPainter(Icons.Default.BrokenImage),
-                                contentScale = ContentScale.Crop,
-                                alignment = Alignment.Center,
-                                modifier = Modifier
-                                    .clip(CircleShape)
-                                    .size(40.dp)
-                            )
-                        }
-                        Column() {
-                            Text(text = user?.names?: "Nombres",
-                                modifier = Modifier,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 16.sp)
-                            Text(text = user?.status?: "--",
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier,
-                                fontSize = 12.sp)
-                        }
+    Scaffold() {
+        Column(
+            modifier = modifier
+                .fillMaxSize()
+                .padding(it),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Box(modifier = Modifier.fillMaxWidth()) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_arrow_back),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .padding(10.dp)
+                        .clickable {
+                            navController.popBackStack()
+                        })
+                Row(modifier = Modifier.align(Alignment.Center)) {
+                    Box(modifier = Modifier.padding(end = 8.dp)) {
+                        AsyncImage(
+                            model = ImageRequest.Builder(LocalContext.current)
+                                .data(state.user.image)
+                                .crossfade(true)
+                                .build(),
+                            contentDescription = null,
+                            placeholder = painterResource(R.drawable.perfil_user),
+                            error = rememberVectorPainter(Icons.Default.BrokenImage),
+                            contentScale = ContentScale.Crop,
+                            alignment = Alignment.Center,
+                            modifier = Modifier
+                                .clip(CircleShape)
+                                .size(40.dp)
+                        )
                     }
+                    Column() {
+                        Text(
+                            text = state.user.names,
+                            modifier = Modifier,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp
+                        )
+                        Text(
+                            text = state.user.status,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier,
+                            fontSize = 12.sp
+                        )
+                    }
+                }
 
             }
             HorizontalDivider(thickness = 1.dp)
-            LazyColumn(modifier = Modifier.weight(1f).fillMaxWidth(),
+            LazyColumn(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
                 state = listState,
-                reverseLayout = true) {
-                items(chatlistOrdered.size){index ->
-                    val chat = chatlistOrdered[index]
-                    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp),
-                        horizontalArrangement = if(chat.emisorUid == uid) Arrangement.Start else Arrangement.End){
-                        Box(modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(ProgressBackground)){
-                            ItemChatView(chat) {
-
+                reverseLayout = true
+            ) {
+                items(chatsOrdered.size) { index ->
+                    val chat = chatsOrdered[index]
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 10.dp),
+                        horizontalArrangement = if (chat.emisorUid == uid) Arrangement.Start else Arrangement.End
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(ProgressBackground)
+                        ) {
+                            ItemChatView(chat = chat, myUid = state.myUser.uid) {
+                                deleteMessage(chat)
                             }
                         }
                     }
                 }
             }
-            Box(modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 5.dp, end = 5.dp, bottom = 10.dp)) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 5.dp, end = 5.dp, bottom = 10.dp)
+            ) {
                 Row(modifier = Modifier.align(Alignment.BottomStart)) {
                     TextField(
-                        value = ChatTextValue,
-                        onValueChange = {it ->
-                            ChatTextValue = it },
-                        placeholder = {Text("Escriba algo")},
+                        value = chatTextValue,
+                        onValueChange = {
+                            chatTextValue = it
+                        },
+                        placeholder = { Text("Escriba algo") },
                         modifier = Modifier
                             .weight(weight = 0.7f)
                             .padding(end = 5.dp)
@@ -386,23 +467,29 @@ fun ChatView(modifier: Modifier = Modifier,
                             unfocusedIndicatorColor = Color.Transparent
                         )
                     )
-                    FloatingActionButton(modifier = Modifier
-                        .weight(weight = 0.15f, fill = true)
-                        .padding(end = 2.5.dp),
+                    FloatingActionButton(
+                        modifier = Modifier
+                            .weight(weight = 0.15f, fill = true)
+                            .padding(end = 2.5.dp),
                         onClick = {
                             updateImageToDB()
                         }) {
-                        Icon(painter = painterResource(R.drawable.ic_image_chat),
-                            contentDescription = null)
+                        Icon(
+                            painter = painterResource(R.drawable.ic_image_chat),
+                            contentDescription = null
+                        )
                     }
-                    FloatingActionButton(modifier = Modifier
-                        .weight(weight = 0.15f, fill = true)
-                        .padding(start = 2.5.dp),
+                    FloatingActionButton(
+                        modifier = Modifier
+                            .weight(weight = 0.15f, fill = true)
+                            .padding(start = 2.5.dp),
                         onClick = {
                             sendMessage()
                         }) {
-                        Icon(painter = painterResource(R.drawable.ic_send_chat),
-                            contentDescription = null)
+                        Icon(
+                            painter = painterResource(R.drawable.ic_send_chat),
+                            contentDescription = null
+                        )
                     }
 
                 }
@@ -410,7 +497,7 @@ fun ChatView(modifier: Modifier = Modifier,
 
         }
     }
-    if(inProgress){
+    if (state.inProgress) {
         Box(
             Modifier
                 .fillMaxSize()
@@ -421,34 +508,36 @@ fun ChatView(modifier: Modifier = Modifier,
             CircularProgressIndicator()
         }
     }
+
 }
 
-@Preview(showBackground = true, showSystemUi = true)
 @Composable
-fun ChatViewPreview(){
-    var chatList = listOf<Chat>(Chat("Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec a gravida mi. " +
-            "Fusce euismod diam.",
-        "",
-        "TEXTO",
-        "asdfasdf",
-        "TEXTO",
-        123123))
-    val uid = ""
-    Scaffold() {
-        Column(Modifier.fillMaxSize().padding(it),
-            horizontalAlignment = Alignment.CenterHorizontally) {
-            LazyColumn(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                items(chatList.size){index ->
-                    val chat = chatList[index]
-                    Row(Modifier.fillMaxWidth().padding(vertical = 10.dp),
-                        horizontalArrangement = if(chat.emisorUid == uid) Arrangement.Start else Arrangement.End){
-                        Box(modifier = Modifier.background(ProgressBackground)){
-                            ItemChatView(chat) {}
-                        }
-                    }
-                }
-            }
+fun ChatView(
+    modifier: Modifier = Modifier,
+    navController: NavController,
+    uid: String?,
+    viewModel: ChatViewModel = viewModel()
+) {
+    val uiState by viewModel.uiState.collectAsState()
+    ChatViewContent(
+        state = uiState,
+        modifier = modifier,
+        navController = navController,
+        uid = uid,
+        loadAllInformation = { uid ->
+            viewModel.loadAllInformation(uid)
+        },
+        loadMessages = { uid ->
+            viewModel.loadMessages(uid)
+        },
+        sendImageMessage = { uri, uid, date ->
+            viewModel.sendImageMessage(uri, uid, date)
+        },
+        sendMessage = { uid, messageType, message, date ->
+            viewModel.sendMessage(uid, messageType, message, date)
+        },
+        deleteMessage = { chat ->
+            viewModel.deleteMessage(chat)
         }
-    }
-
+    )
 }

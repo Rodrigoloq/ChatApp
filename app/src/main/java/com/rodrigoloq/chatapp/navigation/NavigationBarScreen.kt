@@ -1,4 +1,4 @@
-package com.rodrigoloq.chatapp.navigationbar
+package com.rodrigoloq.chatapp.navigation
 
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -12,14 +12,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
-import com.rodrigoloq.chatapp.navigation.AppNavHost
-import com.rodrigoloq.chatapp.navigation.Destination
 import com.rodrigoloq.chatapp.ui.theme.ChatAppTheme
 
 @Preview(showBackground = true, showSystemUi = true)

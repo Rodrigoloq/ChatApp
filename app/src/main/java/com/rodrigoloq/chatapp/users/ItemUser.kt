@@ -33,7 +33,7 @@ import com.rodrigoloq.chatapp.ui.theme.ChatAppTheme
 @Composable
 fun ItemUserViewPreview(){
     ChatAppTheme() {
-        ItemUserView(User("asd","asda@asdf.com","asdas",",sdasd","asdas")){}
+        ItemUserView(User("asd","asda@asdf.com","asdas",",sdasd","0")){}
     }
 }
 

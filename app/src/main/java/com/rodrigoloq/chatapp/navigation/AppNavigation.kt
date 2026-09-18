@@ -9,13 +9,12 @@ import androidx.navigation.compose.navigation
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.google.firebase.auth.FirebaseAuth
-import com.rodrigoloq.chatapp.profile.ChangePasswordView
+import com.rodrigoloq.chatapp.profile.changepassword.ChangePasswordView
 import com.rodrigoloq.chatapp.chat.ChatView
-import com.rodrigoloq.chatapp.profile.EditInformationView
-import com.rodrigoloq.chatapp.auth.ForgotPasswordView
-import com.rodrigoloq.chatapp.auth.LoginEmailView
-import com.rodrigoloq.chatapp.auth.LoginView
-import com.rodrigoloq.chatapp.navigationbar.NavigationBarView
+import com.rodrigoloq.chatapp.profile.editinformation.EditInformationView
+import com.rodrigoloq.chatapp.auth.forgotpassword.ForgotPasswordView
+import com.rodrigoloq.chatapp.auth.loginemail.LoginEmailView
+import com.rodrigoloq.chatapp.auth.login.LoginView
 import com.rodrigoloq.chatapp.register.RegisterView
 
 @Composable

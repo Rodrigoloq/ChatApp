@@ -27,6 +27,8 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -52,6 +54,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.rodrigoloq.chatapp.R
+import com.rodrigoloq.chatapp.register.viewmodel.RegisterUIState
 import com.rodrigoloq.chatapp.register.viewmodel.RegisterViewModel
 import com.rodrigoloq.chatapp.ui.theme.ProgressBackground
 
@@ -59,22 +62,43 @@ import com.rodrigoloq.chatapp.ui.theme.ProgressBackground
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 fun RegisterViewPreview(){
-    RegisterView(modifier = Modifier, navController = rememberNavController())
+    RegisterViewContent(state = RegisterUIState(),
+        modifier = Modifier,
+        navController = rememberNavController()) { email, password, names -> }
 }
 
 @Composable
-fun RegisterView(modifier: Modifier = Modifier,
-                 navController: NavController,
-                 viewModel: RegisterViewModel = viewModel()){
+fun RegisterViewContent(state: RegisterUIState,
+                        modifier: Modifier,
+                        navController: NavController,
+                        registerUser:(String, String, String) -> Unit){
+
     val context = LocalContext.current
+
+    LaunchedEffect(state.registerError) {
+        when(state.registerError){
+            null -> Unit
+            "" -> {
+                Toast.makeText(context,
+                    "Usuario registrado correctamente",
+                    Toast.LENGTH_LONG).show()
+                navController.navigate("main"){
+                    popUpTo("auth") { inclusive = true }
+                }
+            }
+            else -> {
+                Toast.makeText(context,
+                    state.registerError,
+                    Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
 
     val focus = LocalFocusManager.current
     val nameFocusRequester = remember { FocusRequester() }
     val emailFocusRequester = remember { FocusRequester() }
     val passwordFocusRequester = remember { FocusRequester() }
     val rPasswordFocusRequester = remember { FocusRequester() }
-
-    var inProgress = viewModel.inProgress
 
     var nameTextValue by remember { mutableStateOf("") }
     var blankNameError by remember { mutableStateOf(false) }
@@ -107,21 +131,7 @@ fun RegisterView(modifier: Modifier = Modifier,
             blankRPasswordError = true
             rPasswordFocusRequester.requestFocus()
         } else {
-            viewModel.registerUser(emailTextValue,passwordTextValue){onRegister, errorMsg ->
-                if(!onRegister){
-                    Toast.makeText(context,errorMsg, Toast.LENGTH_SHORT).show()
-                }else{
-                   viewModel.updateUserInfo(nameTextValue){onUpdate, errorMsg ->
-                       if(!onUpdate){
-                           Toast.makeText(context,errorMsg, Toast.LENGTH_SHORT).show()
-                       } else {
-                           navController.navigate("main"){
-                               popUpTo("auth") { inclusive = true }
-                           }
-                       }
-                   }
-                }
-            }
+           registerUser(emailTextValue,passwordTextValue,nameTextValue)
         }
     }
 
@@ -134,12 +144,14 @@ fun RegisterView(modifier: Modifier = Modifier,
             Text(fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
                 text = "REGISTRO")
-            Image(modifier = Modifier.width(100.dp)
+            Image(modifier = Modifier
+                .width(100.dp)
                 .padding(top = 15.dp),
                 painter = painterResource(R.drawable.registro_usuario),
                 contentDescription = null)
             //nombres
-            OutlinedTextField(modifier = Modifier.fillMaxWidth()
+            OutlinedTextField(modifier = Modifier
+                .fillMaxWidth()
                 .padding(top = 20.dp, start = 10.dp, end = 10.dp)
                 .focusRequester(nameFocusRequester),
                 value = nameTextValue,
@@ -158,7 +170,8 @@ fun RegisterView(modifier: Modifier = Modifier,
                 },
                 singleLine = true)
             //correo
-            OutlinedTextField(modifier = Modifier.fillMaxWidth()
+            OutlinedTextField(modifier = Modifier
+                .fillMaxWidth()
                 .padding(start = 10.dp, end = 10.dp)
                 .focusRequester(emailFocusRequester),
                 value = emailTextValue,
@@ -182,7 +195,8 @@ fun RegisterView(modifier: Modifier = Modifier,
                 singleLine = true)
             //contraseña
             OutlinedTextField(value = passwordTextValue,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
                     .padding(start = 10.dp, end = 10.dp)
                     .focusRequester(passwordFocusRequester),
                 onValueChange = {
@@ -215,7 +229,8 @@ fun RegisterView(modifier: Modifier = Modifier,
                 singleLine = true)
             //repetir contraseña
             OutlinedTextField(value = rPasswordTextValue,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
                     .padding(start = 10.dp, end = 10.dp)
                     .focusRequester(rPasswordFocusRequester),
                 onValueChange = {
@@ -251,7 +266,8 @@ fun RegisterView(modifier: Modifier = Modifier,
                 },
                 singleLine = true)
 
-            Button(modifier = Modifier.width(250.dp)
+            Button(modifier = Modifier
+                .width(250.dp)
                 .padding(top = 15.dp),
                 onClick = {
                     register()
@@ -260,7 +276,7 @@ fun RegisterView(modifier: Modifier = Modifier,
                 Text(text = "REGISTRAR")
             }
         }
-        if(inProgress){
+        if(state.inProgress){
             Box(
                 Modifier
                     .fillMaxSize()
@@ -272,4 +288,19 @@ fun RegisterView(modifier: Modifier = Modifier,
             }
         }
     }
+}
+
+@Composable
+fun RegisterView(modifier: Modifier = Modifier,
+                 navController: NavController,
+                 viewModel: RegisterViewModel = viewModel()){
+    val uiState by viewModel.uiState.collectAsState()
+
+    RegisterViewContent(
+        state = uiState,
+        modifier = modifier,
+        navController = navController,
+        registerUser = { email, password, names ->
+            viewModel.registerUser(email, password, names) }
+    )
 }

@@ -32,6 +32,7 @@ import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.rodrigoloq.chatapp.R
+import com.rodrigoloq.chatapp.entities.ChatWithLastMessageAndUser
 import com.rodrigoloq.chatapp.entities.Chats
 import com.rodrigoloq.chatapp.entities.User
 import com.rodrigoloq.chatapp.ui.theme.ChatAppTheme
@@ -40,21 +41,17 @@ import com.rodrigoloq.chatapp.ui.theme.ChatAppTheme
 @Composable
 fun ItemChatsViewPreview(){
     ChatAppTheme() {
-        ItemChatsView("",
-            emptyMap(),
-            emptyMap(),
+        ItemChatsView(ChatWithLastMessageAndUser(),
             rememberNavController())
     }
 }
 
 @Composable
-fun ItemChatsView(keyChat: String,
-                  chatData: Map<String, Chats>,
-                  userData: Map<String, User>,
+fun ItemChatsView(chat: ChatWithLastMessageAndUser,
                   navController: NavController){
 
-    val user = userData[keyChat]
-    val chat = chatData[keyChat]
+    val user = chat.user
+    val chat = chat.lastMessage
 
     Box(modifier = Modifier.clickable{
         navController.navigate("chat" + "/${user!!.uid}")

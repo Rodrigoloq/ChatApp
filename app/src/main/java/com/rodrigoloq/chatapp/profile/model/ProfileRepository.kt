@@ -1,154 +1,135 @@
 package com.rodrigoloq.chatapp.profile.model
 
 import android.net.Uri
+import android.util.Log
 import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.messaging.FirebaseMessaging
 import com.google.firebase.storage.FirebaseStorage
+import com.google.firebase.storage.UploadTask
 import com.rodrigoloq.chatapp.entities.User
+import kotlinx.coroutines.tasks.await
 
 class ProfileRepository {
     private val firebaseAuth = FirebaseAuth.getInstance()
     private val firebaseDatabase = FirebaseDatabase.getInstance()
     private val firebaseStorage = FirebaseStorage.getInstance()
 
-    fun singOut(){
-        updateStatus("Offline")
-        firebaseAuth.signOut()
+    suspend fun singOut2(){
+        if (updateStatus("Offline")) firebaseAuth.signOut()
     }
 
-    //PROFILE
-    fun loadUserInfo(onLoad:(String?, User?) -> Unit){
-        val ref = firebaseDatabase.getReference("users")
-        ref.child(firebaseAuth.currentUser!!.uid).get()
-            .addOnSuccessListener { snapshot ->
-                val user = snapshot.getValue(User::class.java)
-                onLoad(null, user)
-            }.addOnFailureListener {e ->
-                onLoad(e.message, null)
-            }
-    }
+    suspend fun loadUserInfo(): Result<User?>{
+        try {
+            val result = firebaseDatabase.getReference("users")
+                .child(firebaseAuth.uid!!)
+                .get().await()
 
-    fun addToken(onAddToken:(String?, String?) -> Unit){
-        val myUid = firebaseAuth.uid
-        FirebaseMessaging.getInstance().token
-            .addOnSuccessListener {fcmToken ->
-                val hashMap = HashMap<String, Any>()
-                hashMap["fcmToken"] = fcmToken
-                val ref = FirebaseDatabase.getInstance().getReference("users")
-                ref.child(myUid!!)
-                    .updateChildren(hashMap)
-                    .addOnSuccessListener {
-                        onAddToken(null, null)
-                    }
-                    .addOnFailureListener {e ->
-                        onAddToken(null, e.message)
-                    }
-            }
-            .addOnFailureListener {e ->
-                onAddToken(e.message, null)
-            }
-    }
-
-    fun updateStatus(status: String) {
-        if(firebaseAuth.currentUser != null){
-            val ref = firebaseDatabase.reference
-                .child("users").child(firebaseAuth.uid!!)
-            val hashMap = HashMap<String, Any>()
-            hashMap["status"] = status
-            ref.updateChildren(hashMap)
+            return Result.success(result.getValue(User::class.java))
+        } catch (e: Exception) {
+            return Result.failure(e)
         }
     }
 
-    //CHANGE PASSWORD
-    fun authUser(actualPassword: String, onError:(String?) -> Unit){
-        val firebaseUser = firebaseAuth.currentUser!!
-        val authCredential = EmailAuthProvider
-            .getCredential(firebaseUser.email.toString(), actualPassword)
-        firebaseUser.reauthenticate(authCredential)
-            .addOnSuccessListener {
-                //UPDATE BD
-                onError(null)
-            }
-            .addOnFailureListener { e ->
-                //MOSTRAR ERROR
-                onError(e.message)
-            }
+    suspend fun addToken(): Result<Unit>{
+        try {
+            val result = FirebaseMessaging.getInstance().token.await()
+
+            val hashMap = HashMap<String, Any>()
+            hashMap["fcmToken"] = result
+
+            FirebaseDatabase
+                .getInstance()
+                .getReference("users")
+                .child(firebaseAuth.uid!!)
+                .updateChildren(hashMap).await()
+
+            return Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e("RLTAG", "addToken2: ${e.message}", )
+            return Result.failure(e)
+        }
     }
 
-    fun updatePassword(newPassword: String, onError: (String?) -> Unit){
-        val firebaseUser = firebaseAuth.currentUser!!
-        firebaseUser.updatePassword(newPassword)
-            .addOnSuccessListener {
-                //mensaje de contraseña actualizada y navegar a inicio
-                onError(null)
+    suspend fun updateStatus(status: String): Boolean{
+        if (firebaseAuth.currentUser != null){
+            val hashMap = HashMap<String, Any>()
+            hashMap["status"] = status
+            try {
+                firebaseDatabase.reference
+                    .child("users")
+                    .child(firebaseAuth.uid!!)
+                    .updateChildren(hashMap).await()
+                return true
+            } catch (e: Exception) {
+                Log.e("RLTAG", "updateStatus: ${e.message}", )
+                return false
             }
-            .addOnFailureListener { e ->
-                //mostrar error
-                onError(e.message)
-            }
+        } else {
+            return false
+        }
     }
 
-    //EDIT INFORMATION
-    fun updateInfoNames(names: String, onError: (String?) -> Unit){
+    suspend fun changePassword(actualPassword: String, newPassword: String): Result<Unit>{
+        val firebaseUser = firebaseAuth.currentUser!!
+
+        val authCredential = EmailAuthProvider.getCredential(firebaseUser.email!!,
+            actualPassword)
+
+        try {
+            firebaseUser.reauthenticate(authCredential).await()
+            firebaseUser.updatePassword(newPassword).await()
+            return Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e("RLTAG", "authUser: ${e.message}", )
+            return Result.failure(e)
+        }
+    }
+
+    suspend fun updateInfoNames(names: String): Result<Unit>{
         val hashMap: HashMap<String, Any> = HashMap()
 
         hashMap["names"] = names
 
-        val ref = firebaseDatabase.getReference("users")
-        ref.child(firebaseAuth.uid!!)
-            .updateChildren(hashMap)
-            .addOnSuccessListener {
-                onError(null)
-            }
-            .addOnFailureListener {e ->
-                onError(e.message)
-            }
-    }
+        try {
+            firebaseDatabase
+                .getReference("users")
+                .child(firebaseAuth.uid!!)
+                .updateChildren(hashMap).await()
 
-
-    fun uploadImageToStorage(imageUri: Uri?, onUpload:(String?, String?) -> Unit) {
-        val imageRute = "profileImages/" + firebaseAuth.uid
-        val ref = firebaseStorage.getReference(imageRute)
-        ref.putFile(imageUri!!)
-            .addOnSuccessListener { taskSnapshot ->
-                val uriTask = taskSnapshot.storage.downloadUrl
-                while (!uriTask.isSuccessful);
-                val urlLoadedImage = uriTask.result.toString()
-                if(uriTask.isSuccessful){
-                    onUpload(urlLoadedImage,null)
-                }
-            }
-            .addOnFailureListener { e ->
-                onUpload(null,e.message)
-            }
-    }
-
-    fun updateInfoImage(urlLoadedImage: String,
-                                imageUri: Uri?,
-                                onError: (String?) -> Unit) {
-        val hashMap : HashMap<String, Any> = HashMap()
-        if(imageUri != null){
-            hashMap["image"] = urlLoadedImage
+            return Result.success(Unit)
+        } catch (e: Exception) {
+            return Result.failure(e)
         }
-
-        val ref = firebaseDatabase.getReference("users")
-        ref.child(firebaseAuth.uid!!)
-            .updateChildren(hashMap)
-            .addOnSuccessListener {
-                onError(null)
-            }
-            .addOnFailureListener { e->
-                onError(e.message)
-            }
     }
 
+    suspend fun updateProfileImage(imageUri: Uri): Result<Unit>{
+        val imageRute = "profileImages/" + firebaseAuth.uid
+        val hashMap : HashMap<String, Any> = HashMap()
 
+        try {
+            val taskSnapshot = firebaseStorage
+                .getReference(imageRute)
+                .putFile(imageUri).await()
 
+            val uri = taskSnapshot
+                .storage
+                .downloadUrl
+                .await()
 
+            hashMap["image"] = uri.toString()
 
+            firebaseDatabase
+                .getReference("users")
+                .child(firebaseAuth.uid!!)
+                .updateChildren(hashMap).await()
 
-
-
+            return Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e("RLTAG", "updateProfileImage: ${e.message}", )
+            return Result.failure(e)
+        }
+    }
 }
